@@ -39,22 +39,22 @@ bool VoodooPS2TouchPadBase::init(OSDictionary * dict)
         return false;
 
     // find config specific to Platform Profile
-    OSDictionary* list = OSDynamicCast(OSDictionary, dict->getObject(kPlatformProfile));
-    OSDictionary* config = ApplePS2Controller::makeConfigurationNode(list);
-    if (config)
-    {
-        // if DisableDevice is Yes, then do not load at all...
-        OSBoolean* disable = OSDynamicCast(OSBoolean, config->getObject(kDisableDevice));
-        if (disable && disable->isTrue())
-        {
-            config->release();
-            return false;
-        }
-#ifdef DEBUG
-        // save configuration for later/diagnostics...
-        setProperty(kMergedConfiguration, config);
-#endif
-    }
+//    OSDictionary* list = OSDynamicCast(OSDictionary, dict->getObject(kPlatformProfile));
+//    OSDictionary* config = ApplePS2Controller::makeConfigurationNode(list);
+//    if (config)
+//    {
+//        // if DisableDevice is Yes, then do not load at all...
+//        OSBoolean* disable = OSDynamicCast(OSBoolean, config->getObject(kDisableDevice));
+//        if (disable && disable->isTrue())
+//        {
+//            config->release();
+//            return false;
+//        }
+//#ifdef DEBUG
+//        // save configuration for later/diagnostics...
+//        setProperty(kMergedConfiguration, config);
+//#endif
+//    }
     
     // initialize state...
     _device = NULL;
@@ -195,7 +195,7 @@ bool VoodooPS2TouchPadBase::init(OSDictionary * dict)
     
 	touchmode=MODE_NOTOUCH;
     
-	IOLog("VoodooPS2TouchPad Version 2.8.15 loaded...\n");
+//	IOLog("VoodooPS2TouchPad Version 2.8.15 loaded...\n");
     
 	setProperty("Revision", 24, 32);
     
@@ -203,8 +203,8 @@ bool VoodooPS2TouchPadBase::init(OSDictionary * dict)
     // Load settings specific to Platform Profile
     //
     
-    setParamPropertiesGated(config);
-    OSSafeRelease(config);
+//    setParamPropertiesGated(config);
+//    OSSafeRelease(config);
     
     return true;
 }

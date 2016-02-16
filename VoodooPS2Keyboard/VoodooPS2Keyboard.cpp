@@ -207,24 +207,6 @@ bool ApplePS2Keyboard::init(OSDictionary * dict)
     if (!super::init(dict))
         return false;
     
-    // find config specific to Platform Profile
-    OSDictionary* list = OSDynamicCast(OSDictionary, dict->getObject(kPlatformProfile));
-    OSDictionary* config = ApplePS2Controller::makeConfigurationNode(list);
-    if (config)
-    {
-        // if DisableDevice is Yes, then do not load at all...
-        OSBoolean* disable = OSDynamicCast(OSBoolean, config->getObject(kDisableDevice));
-        if (disable && disable->isTrue())
-        {
-            config->release();
-            return false;
-        }
-#ifdef DEBUG
-        // save configuration for later/diagnostics...
-        setProperty(kMergedConfiguration, config);
-#endif
-    }
-    
     // initialize state
     _device                    = 0;
     _extendCount               = 0;
@@ -280,11 +262,46 @@ bool ApplePS2Keyboard::init(OSDictionary * dict)
     parseAction("3b d, 37 d, 7b d, 7b u, 37 u, 3b u", _actionSwipeLeft, countof(_actionSwipeLeft));
     parseAction("3b d, 37 d, 7c d, 7c u, 37 u, 3b u", _actionSwipeRight, countof(_actionSwipeRight));
 
-    parseAction("3b d, 3a d, 7e d, 7e u, 3a u, 3b u", _actionSwipe4Up, countof(_actionSwipe4Up));
-    parseAction("3b d, 3a d, 7d d, 7d u, 3a u, 3b u", _actionSwipe4Down, countof(_actionSwipe4Down));
-    parseAction("3b d, 3a d, 7b d, 7b u, 3a u, 3b u", _actionSwipe4Left, countof(_actionSwipe4Left));
-    parseAction("3b d, 3a d, 7c d, 7c u, 3a u, 3b u", _actionSwipe4Right, countof(_actionSwipe4Right));
-    
+    return true;
+}
+
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+ApplePS2Keyboard* ApplePS2Keyboard::probe(IOService * provider, SInt32 * score)
+{
+    DEBUG_LOG("ApplePS2Keyboard::probe entered...\n");
+
+    //
+    // The driver has been instructed to verify the presence of the actual
+    // hardware we represent. We are guaranteed by the controller that the
+    // keyboard clock is enabled and the keyboard itself is disabled (thus
+    // it won't send any asynchronous scan codes that may mess up the
+    // responses expected by the commands we send it).  This is invoked
+    // after the init.
+    //
+
+    if (!super::probe(provider, score))
+        return 0;
+
+    // find config specific to Platform Profile
+    OSDictionary* list = OSDynamicCast(OSDictionary, getProperty(kPlatformProfile));
+    ApplePS2Device* device = (ApplePS2Device*)provider;
+    OSDictionary* config = device->getController()->makeConfigurationNode(list, "Keyboard");
+    if (config)
+    {
+        // if DisableDevice is Yes, then do not load at all...
+        OSBoolean* disable = OSDynamicCast(OSBoolean, config->getObject(kDisableDevice));
+        if (disable && disable->isTrue())
+        {
+            config->release();
+            return 0;
+        }
+#ifdef DEBUG
+        // save configuration for later/diagnostics...
+        setProperty(kMergedConfiguration, config);
+#endif
+    }
+
     //
     // Load settings specfic to the Platform Profile...
     //
@@ -311,8 +328,8 @@ bool ApplePS2Keyboard::init(OSDictionary * dict)
         }
         else
         {
-            OSSafeReleaseNULL(_keysStandard);
-            OSSafeReleaseNULL(_keysSpecial);
+            _keysStandard = NULL;
+            _keysSpecial = NULL;
         }
         
         // load custom macro data
@@ -350,58 +367,9 @@ bool ApplePS2Keyboard::init(OSDictionary * dict)
     logKeySequence("Swipe 4 Right:", _actionSwipe4Right);
 #endif
     
-    return true;
-}
-
-// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-
-void ApplePS2Keyboard::free()
-{
-    OSSafeReleaseNULL(_keysStandard);
-    OSSafeReleaseNULL(_keysSpecial);
-    
-    if (_macroInversion)
-    {
-        delete[] _macroInversion;
-        _macroInversion = 0;
-    }
-    if (_macroTranslation)
-    {
-        delete[] _macroTranslation;
-        _macroTranslation = 0;
-    }
-    if (_macroBuffer)
-    {
-        delete[] _macroBuffer;
-        _macroBuffer = 0;
-    }
-    
-    super::free();
-}
-
-// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-
-ApplePS2Keyboard* ApplePS2Keyboard::probe(IOService * provider, SInt32 * score)
-{
-    DEBUG_LOG("ApplePS2Keyboard::probe entered...\n");
-    
-    //
-    // The driver has been instructed to verify the presence of the actual
-    // hardware we represent. We are guaranteed by the controller that the
-    // keyboard clock is enabled and the keyboard itself is disabled (thus
-    // it won't send any asynchronous scan codes that may mess up the
-    // responses expected by the commands we send it).  This is invoked
-    // after the init.
-    //
-
-    if (!super::probe(provider, score))
-        return 0;
-    
     // Note: always return success for keyboard, so no need to do this!
     //  But we do it in the DEBUG build just for information's sake.
 #ifdef DEBUG
-    ApplePS2KeyboardDevice * device  = (ApplePS2KeyboardDevice *)provider;
-    
     //
     // Check to see if the keyboard responds to a basic diagnostic echo.
     //
@@ -435,6 +403,17 @@ bool ApplePS2Keyboard::start(IOService * provider)
 {
     DEBUG_LOG("ApplePS2Keyboard::start entered...\n");
     
+    // place version/build info in ioreg properties RM,Build and RM,Version
+    extern kmod_info_t kmod_info;
+    char buf[128];
+    snprintf(buf, sizeof(buf), "%s %s", kmod_info.name, kmod_info.version);
+    setProperty("RM,Version", buf);
+#ifdef DEBUG
+    setProperty("RM,Build", "Debug-" LOGNAME);
+#else
+    setProperty("RM,Build", "Release-" LOGNAME);
+#endif
+
     //
     // The driver has been instructed to start.   This is called after a
     // successful attach.
@@ -792,7 +771,10 @@ OSData** ApplePS2Keyboard::loadMacroData(OSDictionary* dict, const char* name)
                         {
                             const UInt8* p = static_cast<const UInt8*>(pData->getBytesNoCopy());
                             if (p[0] == 0xFF && p[1] == 0xFF)
+                            {
                                 result[index++] = pData;
+                                pData->retain();
+                            }
                         }
                     }
                 }
@@ -1102,7 +1084,30 @@ void ApplePS2Keyboard::stop(IOService * provider)
         delete[] _backlightLevels;
         _backlightLevels = 0;
     }
-    
+
+    OSSafeReleaseNULL(_keysStandard);
+    OSSafeReleaseNULL(_keysSpecial);
+
+    if (_macroInversion)
+    {
+        for (OSData** p = _macroInversion; *p; p++)
+            (*p)->release();
+        delete[] _macroInversion;
+        _macroInversion = 0;
+    }
+    if (_macroTranslation)
+    {
+        for (OSData** p = _macroTranslation; *p; p++)
+            (*p)->release();
+        delete[] _macroTranslation;
+        _macroTranslation = 0;
+    }
+    if (_macroBuffer)
+    {
+        delete[] _macroBuffer;
+        _macroBuffer = 0;
+    }
+
     super::stop(provider);
 }
 

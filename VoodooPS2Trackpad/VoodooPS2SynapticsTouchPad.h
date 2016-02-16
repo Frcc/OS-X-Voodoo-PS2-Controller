@@ -110,7 +110,8 @@ protected:
     bool tracksecondary;
     int xrest2, yrest2;
     bool clickedprimary;
-    bool _extendedwmode;
+    bool _extendedwmode, _extendedwmodeSupported;
+    int _dynamicEW;
 
     // normal state
 	int lastx, lasty, lastf;
@@ -213,6 +214,8 @@ protected:
         MODE_WAIT2TAP =     102,    // "no touch"
         MODE_WAIT2RELEASE = 103,    // "touch"
     } touchmode;
+
+    void setClickButtons(UInt32 clickButtons);
     
     inline bool isTouchMode() { return touchmode & 1; }
     
@@ -233,7 +236,12 @@ protected:
     
     void updateTouchpadLED();
     bool setTouchpadLED(UInt8 touchLED);
-    bool setTouchpadModeByte();
+    bool setTouchpadModeByte(); // set based on state
+    void initTouchPad();
+    bool setModeByte(UInt8 modeByteValue);
+    bool setModeByte(); // set based on state
+
+    inline bool isFingerTouch(int z) { return z>z_finger && z<zlimit; }
     
     void queryCapabilities(void);
 
@@ -249,8 +257,6 @@ protected:
     virtual void setParamPropertiesGated(OSDictionary* dict);
     
     virtual bool deviceSpecificInit();
-    
-    virtual void initTouchPad();
 
     virtual void touchpadToggled();
     virtual void touchpadShutdown();

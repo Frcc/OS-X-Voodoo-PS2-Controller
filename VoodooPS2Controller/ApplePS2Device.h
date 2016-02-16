@@ -599,6 +599,9 @@ public:
 
     virtual void lock();
     virtual void unlock();
+
+    // Controller access
+    virtual ApplePS2Controller* getController();
 };
 
 #if 0   // Note: Now using architecture/i386/pio.h (see above)

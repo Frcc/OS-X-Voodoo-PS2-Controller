@@ -56,8 +56,6 @@ make BITS=32
 
 The source code is maintained at the following sites:
 
-https://code.google.com/p/os-x-voodoo-ps2-controller/
-
 https://github.com/RehabMan/OS-X-Voodoo-PS2-Controller
 
 https://bitbucket.org/RehabMan/os-x-voodoo-ps2-controller
@@ -86,6 +84,38 @@ Note: often times you will see either of the two problems mentioned above right 
 
 
 ### Change Log:
+
+2015-11-07 v1.8.19
+
+- Fixed VoodooPS2Daemon detection of certain types of mice (Logitech in particular), by searching also in the legacy tree for USB pointing devices.
+
+
+2015-11-01 v1.8.18
+
+- Added ability to configure from ACPI without modifying the Info.plist.  See the u430 patch repo for an extensive example.
+
+- All special configuration for the Lenovo u430 was removed.  You must use the new ACPI setup with the new kext if you have a Lenovo u430.  Also, the new ACPI setup is not compatible with the old kext, just in case you were wondering.
+
+- Added WakeMouseFirst option to upon wake from sleep initialize the mouse, then keyboard instead of the normal order (keyboard, then mouse).  Set WakeMouseFirst=true for mouse, then keybaord.  Default is WakeMouseFirst=false.
+
+- Fixed a memory leak in VoodooPS2Daemon
+
+
+2015-10-29 v1.8.17
+
+- Added DynamicEWMode option (default is true).  This is specifically to improve two finger scroll responsiveness with ClickPads.  Instead of always forcing the trackpad into EW mode (EW mode enables two finger data), EW mode is only entered upon clicking the pad.  Since each finger gets half bandwidth in EW mode and during a scroll we only need one finger (with indication of two), we can avoid entering EW mode resulting in double the bandwidth during the two finger scroll.  Of course, EW mode is needed when the pad is clicked (for holding the button with one finger while dragging with the other), so EW mode is now turned on/off dynamically depending on whether the button is clicked.
+
+- DynamicEW mode can be turned off by setting DynamicEWMode=false in Info.plist
+
+
+2015-10-16 v1.8.16
+
+- VoodooPS2Daemon now works correctly with 10.11
+
+- change versioning/marking scheme
+
+- some minor bug fixes/cleanup
+
 
 2015-05-02 v1.8.15
 
